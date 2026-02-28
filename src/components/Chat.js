@@ -539,7 +539,7 @@ ${sessionSummary}${slimCsvBlock}
             + New Chat
           </button>
         </div>
-
+        <div className="sidebar-section-label">Recent</div>
         <div className="sidebar-sessions">
           {sessions.map((session) => (
             <div
@@ -587,14 +587,24 @@ ${sessionSummary}${slimCsvBlock}
         <>
         <header className="chat-header">
           <h2 className="chat-header-title">{activeSession?.title ?? 'New Chat'}</h2>
+          {messages.length === 0 && (
+            <p className="chat-header-subtitle">Ask a question, request analysis, or write & run code below.</p>
+          )}
         </header>
 
         <div
-          className={`chat-messages${dragOver ? ' drag-over' : ''}`}
+          className={`chat-messages${dragOver ? ' drag-over' : ''}${messages.length === 0 ? ' is-empty' : ''}`}
           onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={() => setDragOver(false)}
           onDrop={handleDrop}
         >
+          {messages.length === 0 && (
+            <div className="chat-empty-state">
+              <div className="chat-empty-icon">💬</div>
+              <p className="chat-empty-title">Start a conversation</p>
+              <p className="chat-empty-desc">Use the input below to ask questions, attach CSV or images, or request code analysis.</p>
+            </div>
+          )}
           {messages.map((m) => (
             <div key={m.id} className={`chat-msg ${m.role}`}>
               <div className="chat-msg-meta">
