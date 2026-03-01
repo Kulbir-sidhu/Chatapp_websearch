@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { CSV_TOOL_DECLARATIONS } from './csvTools';
+import { JSON_TOOL_DECLARATIONS } from './jsonTools';
 
 const genAI = new GoogleGenerativeAI(process.env.REACT_APP_GEMINI_API_KEY || '');
 
@@ -192,4 +193,58 @@ export const chatWithCsvTools = async (history, newMessage, csvHeaders, executeF
   }
 
   return { text: response.text(), charts, toolCalls };
+};
+
+// ── Function-calling chat for JSON (YouTube channel) tools ─────────────────
+export const chatWithJsonTools = async (history, newMessage, executeFn) => {
+  const systemInstruction = await loadSystemPrompt();
+  const model = genAI.getGenerativeModel({
+    model: MODEL,
+    tools: [{ functionDeclarations: JSON_TOOL_DECLARATIONS }],
+  });
+
+  const baseHistory = history.map((m) => ({
+    role: m.role === 'user' ? 'user' : 'model',
+    parts: [{ text: m.content || '' }],
+  }));
+
+  const chatHistory = systemInstruction
+    ? [
+        {
+          role: 'user',
+          parts: [{ text: `Follow these instructions in every response:\n\n${systemInstruction}` }],
+        },
+        { role: 'model', parts: [{ text: "Got it! I'll follow those instructions." }] },
+        ...baseHistory,
+      ]
+    : baseHistory;
+
+  const chat = model.startChat({ history: chatHistory });
+
+  let response = (await chat.sendMessage(newMessage)).response;
+
+  const charts = [];
+  const videoCards = [];
+  const toolCalls = [];
+
+  for (let round = 0; round < 5; round++) {
+    const parts = response.candidates?.[0]?.content?.parts || [];
+    const funcCall = parts.find((p) => p.functionCall);
+    if (!funcCall) break;
+
+    const { name, args } = funcCall.functionCall;
+    const toolResult = executeFn(name, args || {});
+    toolCalls.push({ name, args: args || {}, result: toolResult });
+
+    if (toolResult?._chartType) charts.push(toolResult);
+    if (toolResult?._cardType === 'youtube_video') videoCards.push(toolResult);
+
+    response = (
+      await chat.sendMessage([
+        { functionResponse: { name, response: { result: toolResult } } },
+      ])
+    ).response;
+  }
+
+  return { text: response.text(), charts, videoCards, toolCalls };
 };

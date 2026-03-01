@@ -151,7 +151,7 @@ app.patch('/api/sessions/:id/title', async (req, res) => {
 
 app.post('/api/messages', async (req, res) => {
   try {
-    const { session_id, role, content, imageData, charts, toolCalls } = req.body;
+    const { session_id, role, content, imageData, charts, toolCalls, generatedImage, videoCards } = req.body;
     if (!session_id || !role || content === undefined)
       return res.status(400).json({ error: 'session_id, role, content required' });
     const msg = {
@@ -163,6 +163,8 @@ app.post('/api/messages', async (req, res) => {
       }),
       ...(charts?.length && { charts }),
       ...(toolCalls?.length && { toolCalls }),
+      ...(generatedImage && { generatedImage }),
+      ...(videoCards?.length && { videoCards }),
     };
     await db.collection('sessions').updateOne(
       { _id: new ObjectId(session_id) },
@@ -198,11 +200,79 @@ app.get('/api/messages', async (req, res) => {
           : undefined,
         charts: m.charts?.length ? m.charts : undefined,
         toolCalls: m.toolCalls?.length ? m.toolCalls : undefined,
+        generatedImage: m.generatedImage || undefined,
+        videoCards: m.videoCards?.length ? m.videoCards : undefined,
       };
     });
     res.json(msgs);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Generate image (Gemini 2.0 Flash image generation) ───────────────────────
+
+const GEMINI_IMAGE_MODEL = 'gemini-2.0-flash-exp-image-generation';
+
+app.post('/api/generate-image', async (req, res) => {
+  try {
+    const apiKey = process.env.REACT_APP_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+    if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured' });
+
+    const { prompt, imageBase64, mimeType } = req.body || {};
+    if (!prompt || typeof prompt !== 'string' || !prompt.trim())
+      return res.status(400).json({ error: 'prompt required' });
+
+    const parts = [{ text: prompt.trim() }];
+    if (imageBase64 && typeof imageBase64 === 'string') {
+      parts.push({
+        inlineData: {
+          mimeType: mimeType === 'image/jpeg' || mimeType === 'image/webp' ? mimeType : 'image/png',
+          data: imageBase64.replace(/^data:[^;]+;base64,/, ''),
+        },
+      });
+    }
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts }],
+          generationConfig: {
+            responseModalities: ['TEXT', 'IMAGE'],
+            responseMimeType: 'text/plain',
+          },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errText = await response.text();
+      return res.status(response.status).json({ error: errText || 'Image generation failed' });
+    }
+
+    const data = await response.json();
+    const candidate = data.candidates?.[0];
+    if (!candidate?.content?.parts) {
+      return res.status(502).json({ error: 'No content in response' });
+    }
+
+    let text = '';
+    let imagePart = null;
+    for (const part of candidate.content.parts) {
+      if (part.text) text += part.text;
+      if (part.inlineData && part.inlineData.mimeType?.startsWith('image/')) {
+        imagePart = { mimeType: part.inlineData.mimeType, data: part.inlineData.data };
+        break;
+      }
+    }
+
+    if (!imagePart) return res.status(502).json({ error: 'No image in response' });
+    res.json({ image: imagePart, text: text.trim() || null });
+  } catch (err) {
+    res.status(500).json({ error: err.message || String(err) });
   }
 });
 
