@@ -1,0 +1,31 @@
+{
+  "channelUrl": "https://www.youtube.com/@veritasium",
+  "channelId": "UCHnyfMqiRRG1u-2MsSQLbXA",
+  "fetchedAt": "2025-02-28T00:00:00.000Z",
+  "videos": [
+    {
+      "videoId": "sample1",
+      "videoUrl": "https://www.youtube.com/watch?v=sample1",
+      "title": "Sample Veritasium Video 1",
+      "description": "Description text.",
+      "transcript": null,
+      "duration": "12m 34s",
+      "releaseDate": "2024-01-15T00:00:00Z",
+      "viewCount": "1000000",
+      "likeCount": "50000",
+      "commentCount": "1200"
+    },
+    {
+      "videoId": "sample2",
+      "videoUrl": "https://www.youtube.com/watch?v=sample2",
+      "title": "Sample Veritasium Video 2",
+      "description": "Description text.",
+      "transcript": "Transcript text if available.",
+      "duration": "8m 20s",
+      "releaseDate": "2024-02-01T00:00:00Z",
+      "viewCount": "500000",
+      "likeCount": "25000",
+      "commentCount": "800"
+    }
+  ]
+}

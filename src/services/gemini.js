@@ -3,7 +3,8 @@ import { CSV_TOOL_DECLARATIONS } from './csvTools';
 
 const genAI = new GoogleGenerativeAI(process.env.REACT_APP_GEMINI_API_KEY || '');
 
-const MODEL = 'gemini-2.0-flash';
+// gemini-2.5-flash is current stable; set REACT_APP_GEMINI_MODEL to override (e.g. gemini-2.0-flash)
+const MODEL = process.env.REACT_APP_GEMINI_MODEL || 'gemini-2.5-flash';
 
 const SEARCH_TOOL = { googleSearch: {} };
 const CODE_EXEC_TOOL = { codeExecution: {} };

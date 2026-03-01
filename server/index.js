@@ -6,7 +6,7 @@ const cors = require('cors');
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '50mb' }));
 
 const URI = process.env.REACT_APP_MONGODB_URI || process.env.MONGODB_URI || process.env.REACT_APP_MONGO_URI;
 const DB = 'chatapp';
@@ -204,6 +204,45 @@ app.get('/api/messages', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// ── YouTube channel download ─────────────────────────────────────────────────
+
+const { fetchChannelVideoData } = require('./youtube');
+
+app.post('/api/youtube/channel', async (req, res) => {
+  const { channelUrl, maxVideos: rawMax } = req.body || {};
+  const maxVideos = Math.min(100, Math.max(1, parseInt(rawMax, 10) || 10));
+
+  if (!channelUrl || typeof channelUrl !== 'string' || !channelUrl.trim()) {
+    return res.status(400).json({ error: 'channelUrl required' });
+  }
+
+  res.setHeader('Content-Type', 'application/x-ndjson');
+  res.setHeader('Transfer-Encoding', 'chunked');
+  res.flushHeaders && res.flushHeaders();
+
+  const send = (obj) => {
+    res.write(JSON.stringify(obj) + '\n');
+    if (res.flush) res.flush();
+  };
+
+  fetchChannelVideoData({
+    channelUrl: channelUrl.trim(),
+    maxVideos,
+    includeTranscript: true,
+    onProgress(percent, message) {
+      send({ type: 'progress', value: percent, message });
+    },
+  })
+    .then((data) => {
+      send({ type: 'done', data });
+      res.end();
+    })
+    .catch((err) => {
+      send({ type: 'error', error: err.message || String(err) });
+      res.end();
+    });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

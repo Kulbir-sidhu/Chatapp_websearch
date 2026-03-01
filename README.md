@@ -18,6 +18,7 @@ Create a `.env` file in the project root with:
 | `REACT_APP_GEMINI_API_KEY` | Yes | Frontend (baked in at build) | Google Gemini API key. Get one at [Google AI Studio](https://aistudio.google.com/apikey). |
 | `REACT_APP_MONGODB_URI` | Yes | Backend | MongoDB Atlas connection string. Format: `mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/` |
 | `REACT_APP_API_URL` | Production only | Frontend (baked in at build) | Full URL of the backend, e.g. `https://your-backend.onrender.com`. Leave blank for local dev (proxy handles it). |
+| `YOUTUBE_API_KEY` or `REACT_APP_YOUTUBE_API_KEY` | For YouTube tab | Backend | YouTube Data API v3 key. Enable [YouTube Data API v3](https://console.cloud.google.com/apis/library/youtube.googleapis.com) and create an API key. |
 
 The backend also accepts `MONGODB_URI` or `REACT_APP_MONGO_URI` as the MongoDB connection string if you prefer those names.
 
@@ -26,7 +27,17 @@ The backend also accepts `MONGODB_URI` or `REACT_APP_MONGO_URI` as the MongoDB c
 ```
 REACT_APP_GEMINI_API_KEY=AIzaSy...
 REACT_APP_MONGODB_URI=mongodb+srv://user:password@cluster.mongodb.net/
+# Optional: for YouTube Channel Download tab
+# YOUTUBE_API_KEY=your_youtube_api_key
 # REACT_APP_API_URL not needed locally — the dev server proxies /api to localhost:3001
+```
+
+### YouTube Channel Download tab
+
+After logging in, use the **YouTube Channel Download** tab to enter a channel URL (e.g. `https://www.youtube.com/@veritasium`), set max videos (1–100, default 10), and click **Download Channel Data**. The app fetches metadata (title, description, transcript when available, duration, release date, view/like/comment counts, video URL) and lets you save a JSON file. A sample file for Veritasium is in `public/veritasium_channel_data.json`. To regenerate it with real data for 10 videos, add `YOUTUBE_API_KEY` to `.env` and run:
+
+```bash
+node scripts/fetch-veritasium.js
 ```
 
 ## MongoDB Setup
