@@ -404,7 +404,7 @@ export default function Chat({ username, onLogout }) {
         generatedImage: image,
       };
       setMessages((m) => [...m, newMsg]);
-      await saveMessage(sessionId, 'model', newMsg.content, null, null, null, image);
+      await saveMessage(sessionId, 'model', newMsg.content, null, null, null, null);
       setSessions((prev) =>
         prev.map((s) => (s.id === sessionId ? { ...s, messageCount: (s.messageCount || 0) + 1 } : s))
       );
@@ -551,8 +551,8 @@ data = json.loads(json_str)
     }
     setStreaming(true);
 
-    // Store display text only — base64 is never persisted
-    await saveMessage(sessionId, 'user', userContent, capturedImages.length ? capturedImages : null);
+    // Store display text only — skip imageData to stay under MongoDB 16MB document limit
+    await saveMessage(sessionId, 'user', userContent, null);
 
     const imageParts = capturedImages.map((img) => ({ mimeType: img.mimeType, data: img.data }));
 

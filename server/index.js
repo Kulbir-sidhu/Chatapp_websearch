@@ -154,16 +154,13 @@ app.post('/api/messages', async (req, res) => {
     const { session_id, role, content, imageData, charts, toolCalls, generatedImage, videoCards } = req.body;
     if (!session_id || !role || content === undefined)
       return res.status(400).json({ error: 'session_id, role, content required' });
+    // Omit imageData and generatedImage to stay under MongoDB 16MB document limit
     const msg = {
       role,
       content,
       timestamp: new Date().toISOString(),
-      ...(imageData && {
-        imageData: Array.isArray(imageData) ? imageData : [imageData],
-      }),
       ...(charts?.length && { charts }),
       ...(toolCalls?.length && { toolCalls }),
-      ...(generatedImage && { generatedImage }),
       ...(videoCards?.length && { videoCards }),
     };
     await db.collection('sessions').updateOne(
