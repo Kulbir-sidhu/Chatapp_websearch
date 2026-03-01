@@ -450,8 +450,14 @@ export default function Chat({ username, onLogout }) {
     //   useTools        — CSV loaded + no Python needed → client-side JS tools (free, fast)
     //   useCodeExecution — Python explicitly needed (regression, histogram, etc.)
     //   else            — Google Search streaming
-    const jsonVideos = sessionJsonData?.videos;
-    const useJsonTools = Array.isArray(jsonVideos) && jsonVideos.length > 0 && !wantPythonOnly && !wantCode;
+    // When channel videos are loaded, prefer JSON tools so we get real charts/stats (not Python + base64 which can fail).
+    // Use session data if already loaded, ELSE use the JSON attached in this message — so first message with attachment also uses tools.
+    const videosFromSession = sessionJsonData?.videos;
+    const videosFromAttachment = capturedJson?.data?.videos;
+    const jsonVideos = (Array.isArray(videosFromSession) && videosFromSession.length > 0)
+      ? videosFromSession
+      : (Array.isArray(videosFromAttachment) && videosFromAttachment.length > 0 ? videosFromAttachment : undefined);
+    const useJsonTools = !!jsonVideos && !wantPythonOnly;
     const useTools = !!sessionCsvRows && !wantPythonOnly && !wantCode && !capturedCsv && !useJsonTools;
     const useCodeExecution = wantPythonOnly || wantCode;
 
@@ -506,7 +512,8 @@ ${sessionSummary}${slimCsvBlock}
 ${jsonForPrompt}
 \`\`\`
 `;
-      if (useCodeExecution && capturedJson.data !== undefined) {
+      // Only add Python/base64 loader when we're actually using code execution (not JSON tools), so the model doesn't try Python.
+      if (useCodeExecution && !useJsonTools && capturedJson.data !== undefined) {
         const jsonBase64 = toBase64(JSON.stringify(capturedJson.data));
         jsonPrefix += `
 To load this JSON in Python (full data), use:
