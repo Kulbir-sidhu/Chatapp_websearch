@@ -4,8 +4,20 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 
-// Suppress benign ResizeObserver loop error (common with charts/layout; does not affect behavior)
-// Use capture phase so we handle it before React's error overlay
+// Suppress ResizeObserver loop error by deferring callbacks (prevents the loop)
+const NativeResizeObserver = window.ResizeObserver;
+if (NativeResizeObserver) {
+  window.ResizeObserver = class extends NativeResizeObserver {
+    constructor(callback) {
+      super((entries, observer) => {
+        requestAnimationFrame(() => {
+          callback(entries, observer);
+        });
+      });
+    }
+  };
+}
+
 window.addEventListener('error', (e) => {
   if (e.message?.includes?.('ResizeObserver loop') || e.message?.includes?.('ResizeObserver')) {
     e.stopImmediatePropagation();

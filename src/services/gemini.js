@@ -196,7 +196,8 @@ export const chatWithCsvTools = async (history, newMessage, csvHeaders, executeF
 };
 
 // ── Function-calling chat for JSON (YouTube channel) tools ─────────────────
-export const chatWithJsonTools = async (history, newMessage, executeFn) => {
+// onProgress(statusMessage) is called after each tool so the UI can show progress
+export const chatWithJsonTools = async (history, newMessage, executeFn, onProgress) => {
   const systemInstruction = await loadSystemPrompt();
   const model = genAI.getGenerativeModel({
     model: MODEL,
@@ -221,6 +222,7 @@ export const chatWithJsonTools = async (history, newMessage, executeFn) => {
 
   const chat = model.startChat({ history: chatHistory });
 
+  if (typeof onProgress === 'function') onProgress('Analyzing your request…');
   let response = (await chat.sendMessage(newMessage)).response;
 
   const charts = [];
@@ -233,6 +235,10 @@ export const chatWithJsonTools = async (history, newMessage, executeFn) => {
     if (!funcCall) break;
 
     const { name, args } = funcCall.functionCall;
+    if (typeof onProgress === 'function') {
+      const label = name === 'compute_stats_json' ? 'Computing statistics…' : name === 'plot_metric_vs_time' ? 'Building chart…' : name === 'play_video' ? 'Finding video…' : `Running ${name}…`;
+      onProgress(label);
+    }
     const toolResult = executeFn(name, args || {});
     toolCalls.push({ name, args: args || {}, result: toolResult });
 
@@ -246,5 +252,6 @@ export const chatWithJsonTools = async (history, newMessage, executeFn) => {
     ).response;
   }
 
+  if (typeof onProgress === 'function') onProgress('Writing summary…');
   return { text: response.text(), charts, videoCards, toolCalls };
 };

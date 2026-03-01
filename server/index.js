@@ -1,4 +1,6 @@
-require('dotenv').config();
+const path = require('path');
+const http = require('http');
+require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
 const express = require('express');
 const { MongoClient, ObjectId } = require('mongodb');
 const bcrypt = require('bcryptjs');
@@ -318,7 +320,11 @@ const PORT = process.env.PORT || 3001;
 
 connect()
   .then(() => {
-    app.listen(PORT, () => console.log(`Server on http://localhost:${PORT}`));
+    const server = http.createServer(
+      { maxHeaderSize: 65536 },
+      app
+    );
+    server.listen(PORT, () => console.log(`Server on http://localhost:${PORT}`));
   })
   .catch((err) => {
     console.error('MongoDB connection failed:', err.message);

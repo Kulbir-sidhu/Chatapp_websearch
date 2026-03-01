@@ -126,7 +126,7 @@ async function getTranscript(videoId) {
  * @returns {Promise<{ channelUrl: string, channelId: string, fetchedAt: string, videos: array }>}
  */
 async function fetchChannelVideoData({ channelUrl, maxVideos, includeTranscript = true, onProgress }) {
-  const apiKey = process.env.YOUTUBE_API_KEY || process.env.REACT_APP_YOUTUBE_API_KEY;
+  const apiKey = (process.env.YOUTUBE_API_KEY || process.env.REACT_APP_YOUTUBE_API_KEY || '').trim();
   if (!apiKey) throw new Error('YouTube API key not set. Add YOUTUBE_API_KEY or REACT_APP_YOUTUBE_API_KEY to .env');
 
   const parsed = parseChannelUrl(channelUrl);

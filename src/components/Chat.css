@@ -2,7 +2,9 @@
 
 .chat-layout {
   display: flex;
-  height: 100vh;
+  flex-direction: row;
+  height: 100%;
+  min-height: 0;
   width: 100%;
   overflow: hidden;
 }

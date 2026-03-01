@@ -527,7 +527,10 @@ data = json.loads(json_str)
     // promptForGemini — sent to the Gemini API (may contain the full prefix)
     const userContent = text || (images.length ? '(Image)' : (capturedCsv ? '(CSV attached)' : (capturedJson ? '(JSON attached)' : '')));
     const defaultPrompt = images.length ? 'What do you see in this image?' : (capturedCsv ? 'Please analyze this CSV data.' : (capturedJson ? 'Please analyze this JSON data.' : 'Please analyze this.'));
-    const promptForGemini = csvPrefix + jsonPrefix + (text || defaultPrompt);
+    const jsonToolsHint = useJsonTools
+      ? '[Channel data is already loaded. Call compute_stats_json, plot_metric_vs_time, or play_video with only the parameter (field/metric/selector); no need to pass or clean the data.]\n\n'
+      : '';
+    const promptForGemini = csvPrefix + jsonPrefix + jsonToolsHint + (text || defaultPrompt);
 
     const userMsg = {
       id: `u-${Date.now()}`,
@@ -579,10 +582,16 @@ data = json.loads(json_str)
     try {
       if (useJsonTools) {
         // ── JSON tools: compute_stats_json, plot_metric_vs_time, play_video ───
+        const onProgress = (status) => {
+          setMessages((m) =>
+            m.map((msg) => (msg.id === assistantId ? { ...msg, content: status } : msg))
+          );
+        };
         const { text: answer, charts: returnedCharts, videoCards: returnedCards, toolCalls: returnedCalls } = await chatWithJsonTools(
           history,
           promptForGemini,
-          (toolName, args) => executeJsonTool(toolName, args, jsonVideos)
+          (toolName, args) => executeJsonTool(toolName, args, jsonVideos),
+          onProgress
         );
         fullContent = answer;
         toolCharts = returnedCharts || [];
@@ -662,27 +671,27 @@ data = json.loads(json_str)
       );
     }
 
-    // Save plain text + any tool charts to DB
-    const savedContent = structuredParts
-      ? structuredParts.filter((p) => p.type === 'text').map((p) => p.text).join('\n')
-      : fullContent;
-    await saveMessage(
-      sessionId,
-      'model',
-      savedContent,
-      null,
-      toolCharts.length ? toolCharts : null,
-      toolCalls.length ? toolCalls : null,
-      null,
-      toolVideoCards.length ? toolVideoCards : null
-    );
-
-    setSessions((prev) =>
-      prev.map((s) => (s.id === sessionId ? { ...s, messageCount: s.messageCount + 2 } : s))
-    );
-
-    setStreaming(false);
-    inputRef.current?.focus();
+    try {
+      const savedContent = structuredParts
+        ? structuredParts.filter((p) => p.type === 'text').map((p) => p.text).join('\n')
+        : fullContent;
+      await saveMessage(
+        sessionId,
+        'model',
+        savedContent,
+        null,
+        toolCharts.length ? toolCharts : null,
+        toolCalls.length ? toolCalls : null,
+        null,
+        toolVideoCards.length ? toolVideoCards : null
+      );
+      setSessions((prev) =>
+        prev.map((s) => (s.id === sessionId ? { ...s, messageCount: s.messageCount + 2 } : s))
+      );
+    } finally {
+      setStreaming(false);
+      inputRef.current?.focus();
+    }
   };
 
   const removeImage = (i) => setImages((prev) => prev.filter((_, idx) => idx !== i));
